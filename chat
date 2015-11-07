@@ -1,0 +1,85 @@
+#!/bin/bash
+
+clear_eol="\r$(tput el)"
+
+roster="roster"
+#rooms="rooms"
+
+mkdir -p $roster
+#mkdir -p $rooms
+
+login_user() {
+    while true; do
+        read -p "Enter your login: " login
+        [ -z "$login" ] && exit 0
+
+        if [ -e "roster/$login" ]; then
+            echo "This name is already taken." 1>&2
+            continue
+        fi
+
+        if ! mkfifo "roster/$login" >& /dev/null; then
+            echo "Could not create user." 1>&2
+            continue
+        fi
+
+        target="$login"
+        break
+    done
+}
+
+parse_message() {
+    if [ "${1:0:1}" == "@" ]; then
+        target="${1:1}"
+        shift
+    fi
+
+    msg="$*"
+}
+
+handle_incoming() {
+    [ ! -e "$roster/$login" ] && return
+
+    exec 3<>"$roster/$login"
+    while read -t0.1 -u3 line; do
+        echo -e "${clear_eol}$(date +%R) $line"
+    done
+    exec 3>&-
+}
+
+main_loop() {
+    while true; do
+        handle_incoming
+
+        echo -ne "\r$target> "          # refresh prompt
+        read -t0.1 -N1 char             # timeout input
+        [ -z "$char" ] && continue      # loop if no key
+
+        unset msg
+        echo -ne "$clear_eol"
+        read -ep "$target> " -i"$char" msg      # now blocking input
+        unset char
+
+        [ "$msg" == "quit" ] && break
+
+        parse_message $msg
+        [ -z "$target" -o -z "$msg" ] && continue
+
+        if [ -e "$roster/$target" ]; then
+            echo "whisper> $login: $msg" > "$roster/$target" &
+        else
+            echo "Target does not exist." 1>&2
+            target=""
+        fi
+    done
+}
+
+cleanup() {
+    rm "$roster/$login"
+    pkill -P "$$" >& /dev/null      # kill child processes
+    exit 0
+}
+
+login_user
+main_loop
+cleanup
