@@ -3,10 +3,10 @@
 clear_eol="\r$(tput el)"
 
 roster="roster"
-#rooms="rooms"
+rooms="rooms"
 
 mkdir -p $roster
-#mkdir -p $rooms
+mkdir -p $rooms
 
 login_user() {
     while true; do
@@ -18,7 +18,7 @@ login_user() {
             continue
         fi
 
-        if ! mkfifo "$roster/$login" >& /dev/null; then
+        if ! mkfifo "$roster/$login" &>/dev/null; then
             echo "Could not create user." 1>&2
             continue
         fi
@@ -28,13 +28,40 @@ login_user() {
     done
 }
 
+send_whisper() {
+    echo "whisper> $login: $1" > "$roster/$2" &
+}
+
+send_channel_message() {
+    for user in $rooms/$2/*; do
+        echo "$2> $login: $1" > "$user" &
+    done
+}
+
+join_channel() {
+    mkdir -p "$rooms/$1"
+    (cd "$rooms/$1" && ln -s "../../$roster/$login")
+}
+
+leave_channel() {
+    rm "$rooms/$1/$login"
+    rmdir "$rooms/$1" &>/dev/null
+}
+
 parse_message() {
     if [ "${1:0:1}" == "@" ]; then
         target="${1:1}"
         shift
+        msg="$*"
+    elif [ "$1" == "join" ]; then
+        shift
+        join_channel "$*"
+        msg=""
+    elif [ "$1" == "leave" ]; then
+        shift
+        leave_channel "$*"
+        msg=""
     fi
-
-    msg="$*"
 }
 
 handle_incoming() {
@@ -66,7 +93,9 @@ main_loop() {
         [ -z "$target" -o -z "$msg" ] && continue
 
         if [ -e "$roster/$target" ]; then
-            echo "whisper> $login: $msg" > "$roster/$target" &
+            send_whisper "$msg" "$target"
+        elif [ -d "$rooms/$target" ]; then
+            send_channel_message "$msg" "$target"
         else
             echo "Target does not exist." 1>&2
             target=""
@@ -75,8 +104,10 @@ main_loop() {
 }
 
 cleanup() {
+    rm -r $rooms/*/$login           # leave channels
+    rmdir $rooms/* &>/dev/null
     rm "$roster/$login"
-    pkill -P "$$" >& /dev/null      # kill child processes
+    pkill -P "$$" &>/dev/null      # kill child processes
     exit 0
 }
 
