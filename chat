@@ -13,12 +13,12 @@ login_user() {
         read -p "Enter your login: " login
         [ -z "$login" ] && exit 0
 
-        if [ -e "roster/$login" ]; then
+        if [ -e "$roster/$login" ]; then
             echo "This name is already taken." 1>&2
             continue
         fi
 
-        if ! mkfifo "roster/$login" >& /dev/null; then
+        if ! mkfifo "$roster/$login" >& /dev/null; then
             echo "Could not create user." 1>&2
             continue
         fi
