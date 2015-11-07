@@ -104,10 +104,10 @@ main_loop() {
 }
 
 cleanup() {
-    rm -r $rooms/*/$login           # leave channels
-    rmdir $rooms/* &>/dev/null
-    rm "$roster/$login"
-    pkill -P "$$" &>/dev/null      # kill child processes
+    rm -r $rooms/*/$login &>/dev/null   # leave channels
+    rmdir $rooms/* &>/dev/null          # remove empty channels
+    rm "$roster/$login"                 # remove user pipe
+    pkill -P "$$" &>/dev/null           # kill child processes
     exit 0
 }
 
