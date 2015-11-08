@@ -5,8 +5,8 @@ clear_eol="\r$(tput el)"
 roster="roster"
 rooms="rooms"
 
-mkdir -p $roster
-mkdir -p $rooms
+mkdir -p "$roster"
+mkdir -p "$rooms"
 
 error() {
     echo $* 1>&2
@@ -37,37 +37,37 @@ send_whisper() {
 }
 
 send_channel_message() {
-    for user in $rooms/$2/*; do
+    for user in "$rooms/$2"/*; do
         echo "$2> $login: $1" > "$user" &
     done
 }
 
 join_channel() {
-    mkdir -p "$rooms/$1"
+    mkdir -p "$rooms/$*"
 
-    if ! (cd "$rooms/$1" && ln -s "../../$roster/$login") &>/dev/null; then
-        error "Already on channel $1."
+    if ! (cd "$rooms/$*" && ln -s "../../$roster/$login") &>/dev/null; then
+        error "Already on channel $*."
     else
-        for user in $rooms/$1/*; do
+        for user in "$rooms/$*"/*; do
             if [[ ! "$user" =~ "$login" ]]; then
-                echo "$1> $login joined." > "$user" &
+                echo "$*> $login joined." > "$user" &
             fi
         done
     fi
 }
 
 leave_channel() {
-    if ! rm "$rooms/$1/$login" &>/dev/null; then
-        error "Not on channel $1."
+    if ! rm "$rooms/$*/$login" &>/dev/null; then
+        error "Not on channel $*."
     else
-        for user in $rooms/$1/*; do
+        for user in "$rooms"/"$*"/*; do
             if [[ ! "$user" =~ "*" ]]; then
-                echo "$1> $login left." > "$user" &
+                echo "$*> $login left." > "$user" &
             fi
         done
     fi
 
-    rmdir "$rooms/$1" &>/dev/null
+    rmdir "$rooms/$*" &>/dev/null
 }
 
 parse_message() {
@@ -126,14 +126,13 @@ main_loop() {
 }
 
 cleanup() {
-    for chan in $rooms/*/"$login"; do     # leave channels
+    for chan in "$rooms"/*/"$login"; do     # leave channels
         if [[ ! "$chan" =~ "*" ]]; then
-            path=(${chan//\// })
-            leave_channel "${path[1]}"
+            [[ $chan =~ /([^/]+)/[^/]+$ ]] && leave_channel "${BASH_REMATCH[1]}"
         fi
     done
 
-    rmdir $rooms/* &>/dev/null          # remove empty channels
+    rmdir "$rooms"/* &>/dev/null        # remove empty channels
     rm "$roster/$login"                 # remove user pipe
     pkill -P "$$" &>/dev/null           # kill child processes
     exit 0
