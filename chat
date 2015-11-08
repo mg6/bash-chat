@@ -40,11 +40,17 @@ send_channel_message() {
 
 join_channel() {
     mkdir -p "$rooms/$1"
-    (cd "$rooms/$1" && ln -s "../../$roster/$login")
+
+    if ! (cd "$rooms/$1" && ln -s "../../$roster/$login") &>/dev/null; then
+        echo "Already on channel $1." 1>&2
+    fi
 }
 
 leave_channel() {
-    rm "$rooms/$1/$login"
+    if ! rm "$rooms/$1/$login" &>/dev/null; then
+        echo "Not on channel $1." 1>&2
+    fi
+
     rmdir "$rooms/$1" &>/dev/null
 }
 
