@@ -8,18 +8,22 @@ rooms="rooms"
 mkdir -p $roster
 mkdir -p $rooms
 
+error() {
+    echo $* 1>&2
+}
+
 login_user() {
     while true; do
         read -p "Enter your login: " login
         [ -z "$login" ] && exit 0
 
         if [ -e "$roster/$login" ]; then
-            echo "This name is already taken." 1>&2
+            error "This name is already taken."
             continue
         fi
 
         if ! mkfifo "$roster/$login" &>/dev/null; then
-            echo "Could not create user." 1>&2
+            error "Could not create user."
             continue
         fi
 
@@ -42,13 +46,13 @@ join_channel() {
     mkdir -p "$rooms/$1"
 
     if ! (cd "$rooms/$1" && ln -s "../../$roster/$login") &>/dev/null; then
-        echo "Already on channel $1." 1>&2
+        error "Already on channel $1."
     fi
 }
 
 leave_channel() {
     if ! rm "$rooms/$1/$login" &>/dev/null; then
-        echo "Not on channel $1." 1>&2
+        error "Not on channel $1."
     fi
 
     rmdir "$rooms/$1" &>/dev/null
@@ -103,7 +107,7 @@ main_loop() {
         elif [ -d "$rooms/$target" ]; then
             send_channel_message "$msg" "$target"
         else
-            echo "Target does not exist." 1>&2
+            error "Target does not exist."
             target=""
         fi
     done
