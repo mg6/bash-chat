@@ -127,8 +127,10 @@ main_loop() {
 
 cleanup() {
     for chan in $rooms/*/$login; do     # leave channels
-        path=(${chan//\// })
-        leave_channel "${path[1]}"
+        if [[ ! "$chan" =~ "*" ]]; then
+            path=(${chan//\// })
+            leave_channel "${path[1]}"
+        fi
     done
 
     rmdir $rooms/* &>/dev/null          # remove empty channels
