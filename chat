@@ -47,12 +47,24 @@ join_channel() {
 
     if ! (cd "$rooms/$1" && ln -s "../../$roster/$login") &>/dev/null; then
         error "Already on channel $1."
+    else
+        for user in $rooms/$1/*; do
+            if [[ ! "$user" =~ "$login" ]]; then
+                echo "$1> $login joined." > "$user" &
+            fi
+        done
     fi
 }
 
 leave_channel() {
     if ! rm "$rooms/$1/$login" &>/dev/null; then
         error "Not on channel $1."
+    else
+        for user in $rooms/$1/*; do
+            if [[ ! "$user" =~ "*" ]]; then
+                echo "$1> $login left." > "$user" &
+            fi
+        done
     fi
 
     rmdir "$rooms/$1" &>/dev/null
@@ -114,7 +126,11 @@ main_loop() {
 }
 
 cleanup() {
-    rm -r $rooms/*/$login &>/dev/null   # leave channels
+    for chan in $rooms/*/$login; do     # leave channels
+        path=(${chan//\// })
+        leave_channel "${path[1]}"
+    done
+
     rmdir $rooms/* &>/dev/null          # remove empty channels
     rm "$roster/$login"                 # remove user pipe
     pkill -P "$$" &>/dev/null           # kill child processes
