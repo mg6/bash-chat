@@ -126,7 +126,7 @@ main_loop() {
 }
 
 cleanup() {
-    for chan in $rooms/*/$login; do     # leave channels
+    for chan in $rooms/*/"$login"; do     # leave channels
         if [[ ! "$chan" =~ "*" ]]; then
             path=(${chan//\// })
             leave_channel "${path[1]}"
